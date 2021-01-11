@@ -24,12 +24,12 @@ contract Campaign {
         uint approvalCount;
         mapping(address => bool) approvals;
     }
-    uint numberOfRequests;
-    mapping (uint => Request) requests;
+    uint public numberOfRequests;
+    mapping (uint => Request) public requests;
     address public manager;
     uint public minimumContribution;
-    mapping(address => bool) public approvers;
-    uint public approversCount;
+    mapping(address => bool) public isAContributor;
+    uint public contributorCount;
     
     modifier restricted() {
         require(msg.sender == manager);
@@ -44,11 +44,11 @@ contract Campaign {
     function contribute() public payable {
         require(msg.value > minimumContribution);
         
-        if(!approvers[msg.sender]) {
-          approversCount++;
+        if(!isAContributor[msg.sender]) {
+          contributorCount++;
         }
 
-        approvers[msg.sender] = true;
+        isAContributor[msg.sender] = true;
     }
     
     function createRequest(string calldata description, uint value, address payable recipient)
@@ -66,7 +66,7 @@ contract Campaign {
     function approveRequest(uint index) public {
         Request storage request = requests[index];
         
-        require(approvers[msg.sender]); // has contributed to the campaign
+        require(isAContributor[msg.sender]); 
         require(!request.approvals[msg.sender]); // has not already approved this request
         
         request.approvals[msg.sender] = true;
@@ -76,8 +76,8 @@ contract Campaign {
     function finalizeRequest(uint index) public {
          Request storage request = requests[index];
          
-         require(!request.complete);
-         require(request.approvalCount > (approversCount / 2));
+         require(!request.complete, "request already completed");
+         require(request.approvalCount > (contributorCount / 2), "not enough approvals");
          
          request.complete = true;
          request.recipient.transfer(request.value);
@@ -88,7 +88,7 @@ contract Campaign {
             minimumContribution,
             address(this).balance,
             numberOfRequests,
-            approversCount,
+            contributorCount,
             manager
         );
     }
